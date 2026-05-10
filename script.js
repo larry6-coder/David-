@@ -2,24 +2,25 @@ const canvas = document.getElementById("canvas");
 const gl = canvas.getContext("webgl");
 
 if (!gl) {
-    alert("WebGL is not supported in your browser.");
+    alert("WebGL not supported");
+    throw new Error("WebGL not supported");
 }
 
-// Resize canvas
+// Resize
 function resizeCanvas() {
+
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
     gl.viewport(0, 0, canvas.width, canvas.height);
-
-    gl.uniform1f(widthHandle, canvas.width);
-    gl.uniform1f(heightHandle, canvas.height);
 }
 
 window.addEventListener("resize", resizeCanvas);
 
+resizeCanvas();
+
 // Vertex Shader
-const vertexSource = `
+const vertexShaderSource = `
 attribute vec2 position;
 
 void main() {
@@ -28,180 +29,41 @@ void main() {
 `;
 
 // Fragment Shader
-const fragmentSource = `
-precision highp float;
+const fragmentShaderSource = `
+precision mediump float;
 
-uniform float width;
-uniform float height;
 uniform float time;
-
-vec2 resolution = vec2(width, height);
-
-#define POINT_COUNT 8
-
-vec2 points[POINT_COUNT];
-
-const float speed = -0.5;
-const float len = 0.25;
-
-float intensity = 1.2;
-float radius = 0.015;
-
-// Signed distance to quadratic bezier
-float sdBezier(vec2 pos, vec2 A, vec2 B, vec2 C){
-
-    vec2 a = B - A;
-    vec2 b = A - 2.0 * B + C;
-    vec2 c = a * 2.0;
-    vec2 d = A - pos;
-
-    float kk = 1.0 / dot(b, b);
-    float kx = kk * dot(a, b);
-    float ky = kk * (2.0 * dot(a, a) + dot(d, b)) / 3.0;
-    float kz = kk * dot(d, a);
-
-    float res = 0.0;
-
-    float p = ky - kx * kx;
-    float p3 = p * p * p;
-    float q = kx * (2.0 * kx * kx - 3.0 * ky) + kz;
-    float h = q * q + 4.0 * p3;
-
-    if (h >= 0.0) {
-
-        h = sqrt(h);
-
-        vec2 x = (vec2(h, -h) - q) / 2.0;
-        vec2 uv = sign(x) * pow(abs(x), vec2(1.0 / 3.0));
-
-        float t = uv.x + uv.y - kx;
-        t = clamp(t, 0.0, 1.0);
-
-        vec2 qos = d + (c + b * t) * t;
-        res = length(qos);
-
-    } else {
-
-        float z = sqrt(-p);
-        float v = acos(q / (p * z * 2.0)) / 3.0;
-
-        float m = cos(v);
-        float n = sin(v) * 1.732050808;
-
-        vec3 t = vec3(m + m, -n - m, n - m) * z - kx;
-        t = clamp(t, 0.0, 1.0);
-
-        vec2 qos = d + (c + b * t.x) * t.x;
-        float dis = dot(qos, qos);
-
-        res = dis;
-
-        qos = d + (c + b * t.y) * t.y;
-        dis = dot(qos, qos);
-
-        res = min(res, dis);
-
-        qos = d + (c + b * t.z) * t.z;
-        dis = dot(qos, qos);
-
-        res = min(res, dis);
-
-        res = sqrt(res);
-    }
-
-    return res;
-}
-
-// Heart equation
-vec2 getHeartPosition(float t) {
-
-    return vec2(
-        16.0 * pow(sin(t), 3.0),
-        -(13.0 * cos(t)
-        - 5.0 * cos(2.0 * t)
-        - 2.0 * cos(3.0 * t)
-        - cos(4.0 * t))
-    );
-}
-
-float getGlow(float dist, float radius, float intensity) {
-    return pow(radius / dist, intensity);
-}
-
-float getSegment(float t, vec2 pos, float offset, float scale) {
-
-    for (int i = 0; i < POINT_COUNT; i++) {
-
-        points[i] = getHeartPosition(
-            offset + float(i) * len + fract(speed * t) * 6.2831
-        );
-    }
-
-    vec2 c = (points[0] + points[1]) / 2.0;
-    vec2 c_prev;
-
-    float dist = 999999.0;
-
-    for (int i = 0; i < POINT_COUNT - 1; i++) {
-
-        c_prev = c;
-        c = (points[i] + points[i + 1]) / 2.0;
-
-        dist = min(
-            dist,
-            sdBezier(
-                pos,
-                scale * c_prev,
-                scale * points[i],
-                scale * c
-            )
-        );
-    }
-
-    return max(0.0, dist);
-}
+uniform vec2 resolution;
 
 void main() {
 
     vec2 uv = gl_FragCoord.xy / resolution.xy;
 
-    float ratio = resolution.x / resolution.y;
+    uv -= 0.5;
 
-    vec2 pos = vec2(0.5) - uv;
+    uv.x *= resolution.x / resolution.y;
 
-    pos.y /= ratio;
+    float x = uv.x;
+    float y = uv.y;
 
-    pos.y += 0.02;
+    float heart =
+        pow(x*x + y*y - 0.3, 3.0)
+        - x*x*y*y*y;
 
-    float scale = 0.000015 * height;
+    float glow = 0.01 / abs(heart);
 
-    vec3 col = vec3(0.0);
+    vec3 color = vec3(
+        glow * 1.0,
+        glow * 0.2,
+        glow * 0.5
+    );
 
-    // Pink heart
-    float dist = getSegment(time, pos, 0.0, scale);
-
-    float glow = getGlow(dist, radius, intensity);
-
-    col += 10.0 * vec3(smoothstep(0.003, 0.001, dist));
-    col += glow * vec3(1.0, 0.2, 0.5);
-
-    // Blue heart
-    dist = getSegment(time, pos, 3.4, scale);
-
-    glow = getGlow(dist, radius, intensity);
-
-    col += 10.0 * vec3(smoothstep(0.003, 0.001, dist));
-    col += glow * vec3(0.2, 0.6, 1.0);
-
-    // Tone mapping
-    col = 1.0 - exp(-col);
-
-    gl_FragColor = vec4(col, 1.0);
+    gl_FragColor = vec4(color, 1.0);
 }
 `;
 
 // Compile shader
-function compileShader(source, type) {
+function createShader(type, source) {
 
     const shader = gl.createShader(type);
 
@@ -212,16 +74,26 @@ function compileShader(source, type) {
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
 
         console.error(gl.getShaderInfoLog(shader));
+
+        gl.deleteShader(shader);
+
+        return null;
     }
 
     return shader;
 }
 
-// Create shaders
-const vertexShader = compileShader(vertexSource, gl.VERTEX_SHADER);
-const fragmentShader = compileShader(fragmentSource, gl.FRAGMENT_SHADER);
+const vertexShader = createShader(
+    gl.VERTEX_SHADER,
+    vertexShaderSource
+);
 
-// Create program
+const fragmentShader = createShader(
+    gl.FRAGMENT_SHADER,
+    fragmentShaderSource
+);
+
+// Program
 const program = gl.createProgram();
 
 gl.attachShader(program, vertexShader);
@@ -231,12 +103,12 @@ gl.linkProgram(program);
 
 gl.useProgram(program);
 
-// Fullscreen quad
+// Rectangle
 const vertices = new Float32Array([
-    -1,  1,
     -1, -1,
-     1,  1,
-     1, -1
+     1, -1,
+    -1,  1,
+     1,  1
 ]);
 
 const buffer = gl.createBuffer();
@@ -246,12 +118,12 @@ gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
 gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
 // Attribute
-const positionHandle = gl.getAttribLocation(program, "position");
+const position = gl.getAttribLocation(program, "position");
 
-gl.enableVertexAttribArray(positionHandle);
+gl.enableVertexAttribArray(position);
 
 gl.vertexAttribPointer(
-    positionHandle,
+    position,
     2,
     gl.FLOAT,
     false,
@@ -260,25 +132,27 @@ gl.vertexAttribPointer(
 );
 
 // Uniforms
-const timeHandle = gl.getUniformLocation(program, "time");
-const widthHandle = gl.getUniformLocation(program, "width");
-const heightHandle = gl.getUniformLocation(program, "height");
+const timeLocation = gl.getUniformLocation(program, "time");
+const resolutionLocation = gl.getUniformLocation(program, "resolution");
 
-// Initial resize
-resizeCanvas();
-
+// Animation
 let time = 0;
 
-// Render loop
-function render() {
+function animate() {
 
     time += 0.01;
 
-    gl.uniform1f(timeHandle, time);
+    gl.uniform1f(timeLocation, time);
+
+    gl.uniform2f(
+        resolutionLocation,
+        canvas.width,
+        canvas.height
+    );
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-    requestAnimationFrame(render);
+    requestAnimationFrame(animate);
 }
 
-render();
+animate();
