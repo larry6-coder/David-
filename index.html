@@ -307,12 +307,24 @@
   .reveal.in{opacity:1; transform:translateY(0);}
 
   ::selection{background:var(--amber); color:#1a1409;}
+  
+<!-- Photo -->
+  .avatar-photo{
+  width:100%; height:100%;
+  border-radius:50%;
+  object-fit:cover;
+  object-position:center top;
+  }
+  
 </style>
 </head>
 <body>
 
 <header>
   <div class="navwrap" id="navwrap">
+    <div class="avatar-inner">
+  <img class="avatar-photo" src="assets/david-photo.png" alt="David Kairu">
+    </div>
     <a href="#" class="logo"><span class="mark">DK</span>David <span>Kairu</span></a>
     <nav>
       <ul>
