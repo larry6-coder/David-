@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
   :root{
     --bg:#151109;
@@ -642,6 +643,34 @@
 </footer>
 
 <script>
+  
+  // Initialize EmailJS
+  emailjs.init("YOUR_PUBLIC_KEY");
+
+  // Contact form submission
+  const contactForm = document.getElementById('contactForm');
+  const submitBtn = document.getElementById('submitBtn');
+
+  contactForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    submitBtn.textContent = 'Sending...';
+    submitBtn.disabled = true;
+
+    emailjs.sendForm('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', contactForm)
+      .then(() => {
+        submitBtn.textContent = 'Send Message';
+        submitBtn.disabled = false;
+        alert('Thanks! David will get back to you shortly.');
+        contactForm.reset();
+      })
+      .catch((error) => {
+        submitBtn.textContent = 'Send Message';
+        submitBtn.disabled = false;
+        alert('Something went wrong. Please try again or contact David directly by phone.');
+        console.error('EmailJS error:', error);
+      });
+  });
+  
   // Mobile menu toggle
   const menuToggle = document.getElementById('menuToggle');
   const mobileNav = document.getElementById('mobileNav');
