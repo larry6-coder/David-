@@ -646,7 +646,7 @@
 <script>
   
   // Initialize EmailJS
-  emailjs.init("YOUR_PUBLIC_KEY");
+  emailjs.init("GAkR7RB5bgZh_dYjm");
 
   // Contact form submission
   const contactForm = document.getElementById('contactForm');
@@ -657,7 +657,7 @@
     submitBtn.textContent = 'Sending...';
     submitBtn.disabled = true;
 
-    emailjs.sendForm('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', contactForm)
+    emailjs.sendForm('service_5mr2kq9', 'template_x977fh1', contactForm)
       .then(() => {
         submitBtn.textContent = 'Send Message';
         submitBtn.disabled = false;
